@@ -16,24 +16,42 @@ function customBind(fn, context, ...boundArgs) {
   // Step 1: Validate that fn is a function
   // Throw TypeError if not
 
+  if (typeof fn !== 'function') {
+    throw new TypeError('Error: CustomBind is not a function!')
+  }
+
   // Step 2: Create the bound function
   // It should:
   //   - Combine boundArgs with any new arguments
   //   - Call the original function with the combined arguments
   //   - Use the correct `this` context
 
-  // Step 3: Handle constructor calls (when used with `new`)
-  // When called as a constructor:
-  //   - `this` should be a new instance, not the bound context
-  //   - The prototype chain should be preserved
+  function bound(...args) {
+    const combinedArgs = [...boundArgs, ...args]
+
+    // Step 3: Handle constructor calls (when used with `new`)
+    // When called as a constructor:
+    //   - `this` should be a new instance, not the bound context
+    //   - The prototype chain should be preserved
+
+    if (new.target) {
+      return fn.apply(this, combinedArgs)
+    }
+
+    return fn.apply(context, combinedArgs)
+  }
 
   // Step 4: Preserve the prototype for constructor usage
   // boundFunction.prototype = Object.create(fn.prototype)
 
+  if (fn.prototype) {
+    bound.prototype = Object.create(fn.prototype)
+  }
+
   // Step 5: Return the bound function
 
   // Return placeholder that doesn't work
-  throw new Error("Not implemented");
+  return bound
 }
 
 /**
@@ -44,8 +62,8 @@ function customBind(fn, context, ...boundArgs) {
  */
 
 // Uncomment and implement:
-// Function.prototype.customBind = function(context, ...boundArgs) {
-//   // Your implementation
-// };
+Function.prototype.customBind = function (context, ...boundArgs) {
+  return customBind(this, context, ...boundArgs)
+};
 
 module.exports = { customBind };
