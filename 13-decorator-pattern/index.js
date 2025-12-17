@@ -26,7 +26,12 @@ function withLogging(fn) {
   // Note: Preserve 'this' context using apply/call
 
   // Broken: throws error
-  throw new Error("Not implemented");
+  return function (...args) {
+    console.log(`Returned function ${fn.name} with args: ${args.join(', ')}`)
+    const result = fn.apply(this, args)
+    console.log(`Result: ${result}`)
+    return result
+  }
 }
 
 /**
@@ -50,7 +55,13 @@ function withTiming(fn) {
 
   // Step 5: Return result
 
-  return () => undefined; // Broken placeholder
+  return function (...args) {
+    const startTime = Date.now()
+    const result = fn.apply(this, args)
+    const duration = Date.now() - startTime
+    console.log(`Function ${fn.name} execute with duration: ${duration}`)
+    return result
+  }
 }
 
 /**
@@ -76,7 +87,21 @@ function withRetry(fn, maxRetries = 3) {
 
   // Step 4: If all retries fail, throw the last error
 
-  return () => undefined; // Broken placeholder
+  return function (...args) {
+    let attemptCount = 0
+    let lastError
+
+    for (attemptCount; attemptCount < maxRetries + 1; attemptCount++) {
+      try {
+        return fn.apply(this, args)
+      }
+      catch (error) {
+        lastError = error
+      }
+    }
+
+    throw lastError
+  }
 }
 
 /**
@@ -92,7 +117,19 @@ function withMemoize(fn) {
 
   // Similar to memoization assignment but as a decorator
 
-  return () => undefined; // Broken placeholder
+  const cache = new Map()
+
+  return function (...args) {
+    const key = JSON.stringify(args)
+
+    if (cache.has(key)) {
+      return cache.get(key)
+    }
+
+    const result = fn.apply(this, args)
+    cache.set(key, result)
+    return result
+  }
 }
 
 /**
@@ -115,7 +152,13 @@ function withValidation(fn, validator) {
 
   // Step 4: If passes, call original function
 
-  return () => undefined; // Broken placeholder
+  return function (...args) {
+    if (!validator(...args)) {
+      throw new Error(`Function is invalid!`)
+    }
+
+    return fn.apply(this, args)
+  }
 }
 
 /**
@@ -132,14 +175,29 @@ function withCache(obj, methodName) {
 
   // Step 1: Get the original method
 
+  const original = obj[methodName]
+
   // Step 2: Create a cache (Map)
 
+  const cache = new Map()
+
   // Step 3: Replace the method with a caching wrapper
+
+  obj[methodName] = function (...args) {
+    const key = JSON.stringify(args)
+
+    if (cache.has(key)) {
+      return cache.get(key)
+    }
+
+    const result = original.apply(this, args)
+    cache.set(key, result)
+    return cache.get(key)
+  }
 
   // Step 4: Return the object
 
   // Broken: deletes the method instead of caching it
-  delete obj[methodName];
   return obj;
 }
 
@@ -160,7 +218,7 @@ function compose(...decorators) {
   // Example: compose(a, b, c)(fn) = a(b(c(fn)))
 
   return (fn) => {
-    throw new Error("Not implemented");
+    return decorators.reduceRight((acc, decorator) => decorator(acc), fn)
   };
 }
 
@@ -178,7 +236,7 @@ function pipe(...decorators) {
   // Same as compose but left-to-right
 
   return (fn) => {
-    throw new Error("Not implemented");
+    return decorators.reduce((acc, decorator) => decorator(acc), fn);
   };
 }
 
