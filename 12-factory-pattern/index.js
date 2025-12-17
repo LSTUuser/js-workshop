@@ -74,8 +74,16 @@ const ShapeFactory = {
 
     // Use switch or object lookup to create the right shape
     // Throw error for unknown types
-
-    return null; // Replace with implementation
+    switch (type) {
+      case 'circle':
+        return new Circle(options)
+      case 'rectangle':
+        return new Rectangle(options)
+      case 'triangle':
+        return new Triangle(options)
+      default:
+        throw new Error(`Unknown type of shape: ${type}`)
+    }
   },
 };
 
@@ -87,7 +95,7 @@ const ShapeFactory = {
 class Factory {
   constructor() {
     // TODO: Initialize registry
-    // this.registry = new Map();
+    this.registry = new Map();
   }
 
   /**
@@ -101,6 +109,7 @@ class Factory {
   register(type, Class, options = {}) {
     // TODO: Implement register
     // Store the class and options in the registry
+    this.registry.set(type, { Class, options })
   }
 
   /**
@@ -111,7 +120,7 @@ class Factory {
   unregister(type) {
     // TODO: Implement unregister
 
-    throw new Error("Not implemented");
+    return this.registry.delete(type)
   }
 
   /**
@@ -125,15 +134,35 @@ class Factory {
 
     // Step 1: Check if type is registered
 
+    if (!this.registry.has(type)) {
+      throw new Error(`The ${type} type doesn't register!`)
+    }
+
     // Step 2: Get the class and options
+
+    const { Class, options } = this.registry.get(type)
 
     // Step 3: Validate required fields (if specified)
 
+    if (options.required) {
+      for (const param of options.required) {
+        if (!(param in args)) {
+          throw new Error(`Parameter ${param} not found!`)
+        }
+      }
+    }
+
     // Step 4: Run custom validation (if specified)
+
+    if (options.validate) {
+      if (!options.validate(args)) {
+        throw new Error(`Type ${type} is invalid!`);
+      }
+    }
 
     // Step 5: Create and return instance
 
-    return null; // Replace with implementation
+    return new Class(args); // Replace with implementation
   }
 
   /**
@@ -144,7 +173,7 @@ class Factory {
   has(type) {
     // TODO: Implement has
 
-    throw new Error("Not implemented");
+    return this.registry.has(type)
   }
 
   /**
@@ -154,7 +183,7 @@ class Factory {
   getTypes() {
     // TODO: Implement getTypes
 
-    throw new Error("Not implemented");
+    return Array.from(this.registry.keys())
   }
 
   /**
@@ -162,7 +191,7 @@ class Factory {
    */
   clear() {
     // TODO: Implement clear
-    throw new Error("Not implemented");
+    return this.registry.clear()
   }
 }
 
