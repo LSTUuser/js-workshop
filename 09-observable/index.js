@@ -10,7 +10,7 @@ class Observable {
    */
   constructor(subscribeFn) {
     // TODO: Store the subscribe function
-    // this._subscribeFn = subscribeFn;
+    this._subscribeFn = subscribeFn;
   }
 
   /**
@@ -23,19 +23,68 @@ class Observable {
 
     // Step 1: Normalize observer (handle function shorthand)
     // If observer is a function, wrap it: { next: observer }
+    let normalizedObserver
+
+    if (typeof observer === 'function') {
+      normalizedObserver = { next: observer }
+    } else {
+      normalizedObserver = observer
+    }
 
     // Step 2: Create a subscriber object that:
     //   - Has next, error, complete methods
     //   - Tracks if completed/errored (stops accepting values)
     //   - Calls observer methods when appropriate
 
+    let isActive = true;
+
+    const subscriber = {
+      next: (value) => {
+        if (!isActive) {
+          return
+        }
+        if (normalizedObserver.next) {
+          normalizedObserver.next(value);
+        }
+      },
+      error: (error) => {
+        if (!isActive) {
+          return
+        }
+        isActive = false
+        if (normalizedObserver.error) {
+          normalizedObserver.error(error)
+        }
+      },
+      complete: () => {
+        if (!isActive) {
+          return
+        }
+        isActive = false
+        if (normalizedObserver.complete) {
+          normalizedObserver.complete()
+        }
+      }
+    };
+
     // Step 3: Call the subscribe function with the subscriber
 
     // Step 4: Handle cleanup function returned by subscribeFn
 
+    const cleanupFn = this._subscribeFn(subscriber)
+
     // Step 5: Return subscription object with unsubscribe method
 
-    throw new Error("Not implemented");
+    return {
+      unsubscribe: () => {
+        if (isActive) {
+          isActive = false
+          if (typeof cleanupFn === 'function') {
+            cleanupFn()
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -51,7 +100,17 @@ class Observable {
     // - Calls fn on each value
     // - Emits transformed value
 
-    return new Observable(() => {}); // Broken: Replace with implementation
+    return new Observable((subscriber) => {
+      const subscription = this.subscribe({
+        next: (value) => {
+          subscriber.next(fn(value))
+        },
+        error: (error) => subscriber.error(error),
+        complete: () => subscriber.complete()
+      })
+
+      return () => subscription.unsubscribe()
+    })
   }
 
   /**
@@ -66,7 +125,19 @@ class Observable {
     // - Subscribes to source (this)
     // - Only emits values where predicate returns true
 
-    return new Observable(() => {}); // Broken: Replace with implementation
+    return new Observable((subscriber) => {
+      const subscription = this.subscribe({
+        next: (value) => {
+          if (predicate(value)) {
+            subscriber.next(value)
+          }
+        },
+        error: (error) => subscriber.error(error),
+        complete: () => subscriber.complete()
+      })
+
+      return () => subscription.unsubscribe()
+    })
   }
 
   /**
@@ -82,7 +153,34 @@ class Observable {
     // - Emits first `count` values
     // - Completes after `count` values
 
-    return new Observable(() => {}); // Broken: Replace with implementation
+    return new Observable((subscriber) => {
+      let taken = 0
+      let subscription
+
+      subscription = this.subscribe({
+        next: (value) => {
+          if (taken < count) {
+            subscriber.next(value)
+            taken++
+            if (taken >= count) {
+              subscriber.complete()
+            }
+          }
+        },
+        error: (error) => subscriber.error(error),
+        complete: () => {
+          if (taken < count) {
+            subscriber.complete()
+          }
+        }
+      })
+
+      return () => {
+        if (subscription) {
+          subscription.unsubscribe()
+        }
+      }
+    })
   }
 
   /**
@@ -98,7 +196,22 @@ class Observable {
     // - Ignores first `count` values
     // - Emits remaining values
 
-    return new Observable(() => {}); // Broken: Replace with implementation
+    return new Observable((subscriber) => {
+      let skipped = 0
+      const subscription = this.subscribe({
+        next: (value) => {
+          if (skipped >= count) {
+            subscriber.next(value)
+          } else {
+            skipped++
+          }
+        },
+        error: (error) => subscriber.error(error),
+        complete: () => subscriber.complete()
+      })
+
+      return () => subscription.unsubscribe()
+    })
   }
 
   /**
@@ -116,6 +229,8 @@ class Observable {
     return new Observable((subscriber) => {
       // subscriber.next(...) for each
       // subscriber.complete()
+      array.forEach((value) => subscriber.next(value))
+      subscriber.complete()
     });
   }
 
