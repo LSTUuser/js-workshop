@@ -45,12 +45,13 @@ describe("retry", () => {
       const fn = jest.fn().mockRejectedValue(error);
 
       const promise = retry(fn, { maxRetries: 2, initialDelay: 100 });
+      const expectation = expect(promise).rejects.toThrow("persistent failure");
 
       await jest.advanceTimersByTimeAsync(0); // attempt 1
       await jest.advanceTimersByTimeAsync(100); // attempt 2
       await jest.advanceTimersByTimeAsync(200); // attempt 3
 
-      await expect(promise).rejects.toThrow("persistent failure");
+      await expectation;
       expect(fn).toHaveBeenCalledTimes(3); // initial + 2 retries
     });
   });
@@ -60,12 +61,13 @@ describe("retry", () => {
       const fn = jest.fn().mockRejectedValue(new Error("fail"));
 
       const promise = retry(fn, { maxRetries: 5, initialDelay: 10 });
+      const expectation = expect(promise).rejects.toThrow();
 
       for (let i = 0; i < 10; i++) {
         await jest.advanceTimersByTimeAsync(100);
       }
 
-      await expect(promise).rejects.toThrow();
+      await expectation;
       expect(fn).toHaveBeenCalledTimes(6); // initial + 5 retries
     });
 
@@ -73,9 +75,10 @@ describe("retry", () => {
       const fn = jest.fn().mockRejectedValue(new Error("fail"));
 
       const promise = retry(fn, { maxRetries: 0 });
+      const expectation = expect(promise).rejects.toThrow();
       await jest.advanceTimersByTimeAsync(0);
 
-      await expect(promise).rejects.toThrow();
+      await expectation;
       expect(fn).toHaveBeenCalledTimes(1);
     });
   });
@@ -105,9 +108,10 @@ describe("retry", () => {
       const promise = retry(fn, {
         retryIf: (error) => error.status >= 500,
       });
+      const expectation = expect(promise).rejects.toEqual({ status: 400 });
 
       await jest.advanceTimersByTimeAsync(0);
-      await expect(promise).rejects.toEqual({ status: 400 });
+      await expectation;
       expect(fn).toHaveBeenCalledTimes(1);
     });
   });
@@ -198,6 +202,7 @@ describe("retry with backoff strategies", () => {
       maxDelay: 5000,
       backoff: "exponential",
     });
+    const expectation = expect(promise).rejects.toThrow();
 
     // Track delays by advancing time
     // exponential would be: 1000, 2000, 4000, 8000, 16000
@@ -207,6 +212,6 @@ describe("retry with backoff strategies", () => {
       await jest.advanceTimersByTimeAsync(5000);
     }
 
-    await expect(promise).rejects.toThrow();
+    await expectation;
   });
 });
