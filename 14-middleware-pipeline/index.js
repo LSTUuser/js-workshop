@@ -6,7 +6,7 @@
 class Pipeline {
   constructor() {
     // TODO: Initialize middleware array
-    // this.middleware = [];
+    this.middleware = [];
   }
 
   /**
@@ -19,11 +19,17 @@ class Pipeline {
 
     // Step 1: Validate fn is a function
 
+    if (typeof fn !== 'function') {
+      throw new Error(`${fn.name} is not a function!`)
+    }
+
     // Step 2: Add to middleware array
+
+    this.middleware.push(fn)
 
     // Step 3: Return this for chaining
 
-    return null; // Broken: should return this
+    return this; // Broken: should return this
   }
 
   /**
@@ -41,12 +47,20 @@ class Pipeline {
     //   - Otherwise, call middleware with context and next function
     //   - next = () => dispatch(index + 1)
 
+    const dispatch = (index) => {
+      if (!this.middleware[index]) {
+        return Promise.resolve(this)
+      }
+
+      return this.middleware[index](context, () => dispatch(index + 1))
+    }
+
     // Step 2: Start dispatch at index 0
 
     // Step 3: Return promise for async support
 
     // Broken: rejects instead of resolving
-    return Promise.reject(new Error("Not implemented"));
+    return dispatch(0);
   }
 
   /**
@@ -55,6 +69,7 @@ class Pipeline {
    */
   compose() {
     // TODO: Implement compose
+
 
     // Return a function that takes context and runs the pipeline
 
@@ -75,6 +90,12 @@ function compose(middleware) {
 
   // Validate all items are functions
 
+  middleware.forEach(fn => {
+    if (typeof fn !== 'function') {
+      throw new Error(`${fn.name} is not a function!`)
+    }
+  })
+
   // Return a function that:
   // - Takes context
   // - Creates dispatch(index) that calls middleware[index]
@@ -90,8 +111,18 @@ function compose(middleware) {
       // Step 4: Call middleware with (context, next)
       // Step 5: Return as promise
 
-      // Broken: rejects instead of resolving
-      return Promise.reject(new Error("Not implemented"));
+      if (index >= middleware.length) {
+        return Promise.resolve()
+      }
+
+      const fn = middleware[index]
+
+      try {
+        const result = fn(context, () => dispatch(index + 1))
+        return Promise.resolve(result)
+      } catch (error) {
+        return Promise.reject(error)
+      }
     }
 
     return dispatch(0);
@@ -114,8 +145,11 @@ function when(condition, middleware) {
   // - If false, just calls next()
 
   return (ctx, next) => {
-    throw new Error("Not implemented");
-  };
+    if (condition(ctx)) {
+      return middleware(ctx, next)
+    }
+    return next()
+  }
 }
 
 /**
@@ -132,7 +166,13 @@ function errorMiddleware(errorHandler) {
   // - Calls errorHandler if error thrown
 
   return async (ctx, next) => {
-    throw new Error("Not implemented");
+    try {
+      await next()
+    }
+
+    catch (error) {
+      return errorHandler(error, ctx)
+    }
   };
 }
 
