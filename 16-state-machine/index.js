@@ -12,11 +12,21 @@ class StateMachine {
   constructor(config) {
     // TODO: Implement constructor
     // Step 1: Validate config has initial and states
+
+    if (!config.initial || !config.states) {
+      throw new Error(`Initial or state not found`)
+    }
+
     // Step 2: Store configuration
-    // this.config = config;
-    // this.currentState = config.initial;
-    // this.context = config.context || {};
+    this.config = config;
+    this.currentState = config.initial;
+    this.context = config.context || {};
     // Step 3: Validate initial state exists in states
+
+    if (!config.states[config.initial]) {
+      throw new Error(`Initial state doesn't exist in states`)
+    }
+
   }
 
   /**
@@ -25,7 +35,7 @@ class StateMachine {
    */
   get state() {
     // TODO: Return current state
-    throw new Error("Not implemented");
+    return this.currentState
   }
 
   /**
@@ -39,23 +49,50 @@ class StateMachine {
 
     // Step 1: Get current state config
 
+    const currentStateCfg = this.config.states[this.currentState]
+
     // Step 2: Check if event is valid for current state
     // Return false if not
+
+    if (!currentStateCfg.on || !currentStateCfg.on[event]) {
+      return false
+    }
 
     // Step 3: Get transition config (can be string or object)
     // If string: target = transition
     // If object: { target, guard, action }
 
+    const transitionCfg = currentStateCfg.on[event]
+
+    let target, guard, action
+    if (typeof transitionCfg === 'string') {
+      target = transitionCfg
+    } else {
+      target = transitionCfg.target
+      guard = transitionCfg.guard
+      action = transitionCfg.action
+    }
+
     // Step 4: Check guard if present
     // If guard returns false, return false
 
+    if (guard && !guard(this.context, payload)) {
+      return false
+    }
+
     // Step 5: Update state to target
+
+    this.currentState = target
 
     // Step 6: Call action if present
 
+    if (action) {
+      action(this.context, payload)
+    }
+
     // Step 7: Return true
 
-    throw new Error("Not implemented");
+    return true
   }
 
   /**
@@ -69,7 +106,21 @@ class StateMachine {
     // Check if event exists for current state
     // Check guard if present
 
-    throw new Error("Not implemented");
+    const currentStateCfg = this.config.states[this.currentState]
+
+    if (!currentStateCfg.on || !currentStateCfg.on[event]) {
+      return false
+    }
+
+    const transitionCfg = currentStateCfg.on[event]
+    const guard = typeof transitionCfg === 'object' ? transitionCfg.guard : null
+
+    if (guard) {
+      return guard(this.context)
+    }
+
+    return true
+
   }
 
   /**
@@ -81,7 +132,13 @@ class StateMachine {
 
     // Return array of event names from current state's 'on' config
 
-    throw new Error("Not implemented");
+    const currentStateCfg = this.config.states[this.currentState]
+
+    if (!currentStateCfg.on) {
+      return []
+    }
+
+    return Object.keys(currentStateCfg.on)
   }
 
   /**
@@ -90,7 +147,7 @@ class StateMachine {
    */
   getContext() {
     // TODO: Return context
-    throw new Error("Not implemented");
+    return { ...this.context }
   }
 
   /**
@@ -101,6 +158,12 @@ class StateMachine {
     // TODO: Implement updateContext
     // If updater is function: this.context = updater(this.context)
     // If updater is object: merge with existing context
+
+    if (typeof updater === 'function') {
+      this.context = updater(this.context)
+    } else {
+      this.context = { ...this.context, ...updater }
+    }
   }
 
   /**
@@ -109,7 +172,8 @@ class StateMachine {
    */
   isFinal() {
     // TODO: Check if current state has no transitions
-    throw new Error("Not implemented");
+    const currentStateCfg = this.config.states[this.currentState]
+    return !currentStateCfg.on || Object.keys(currentStateCfg.on).length === 0
   }
 
   /**
@@ -119,6 +183,11 @@ class StateMachine {
   reset(newContext) {
     // TODO: Reset to initial state
     // Optionally reset context
+
+    this.currentState = this.config.initial
+    if (newContext !== undefined) {
+      this.context = newContext
+    }
   }
 }
 
